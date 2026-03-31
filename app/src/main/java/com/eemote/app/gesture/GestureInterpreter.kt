@@ -48,6 +48,18 @@ class GestureInterpreter {
             return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.ROTATE, GestureCommand.ROTATE), 900)
         }
 
+        // Fallback static gestures to make control practical on real phones:
+        // 1 finger -> Back, 2 fingers -> Home, 3 fingers -> Recents.
+        if (ext.index && !ext.middle && !ext.ring && !ext.pinky) {
+            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.TURN, GestureCommand.TURN_LEFT), 900)
+        }
+        if (ext.index && ext.middle && !ext.ring && !ext.pinky) {
+            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.TURN, GestureCommand.TURN_RIGHT), 900)
+        }
+        if (ext.index && ext.middle && ext.ring && !ext.pinky) {
+            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.ROTATE, GestureCommand.ROTATE), 1000)
+        }
+
         return null
     }
 

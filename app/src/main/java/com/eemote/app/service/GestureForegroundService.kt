@@ -133,6 +133,7 @@ class GestureForegroundService : LifecycleService() {
     }
 
     private fun updateNotification(contentText: String) {
+        lastStatus = contentText
         val notificationManager = getSystemService(NotificationManager::class.java) ?: return
         notificationManager.notify(NOTIFICATION_ID, buildNotification(contentText))
     }
@@ -200,6 +201,8 @@ class GestureForegroundService : LifecycleService() {
 
         @Volatile
         private var running: Boolean = false
+        @Volatile
+        private var lastStatus: String = "IDLE"
 
         fun start(context: Context) {
             val intent = Intent(context, GestureForegroundService::class.java).apply {
@@ -216,5 +219,7 @@ class GestureForegroundService : LifecycleService() {
         }
 
         fun isRunning(): Boolean = running
+
+        fun currentStatus(): String = lastStatus
     }
 }

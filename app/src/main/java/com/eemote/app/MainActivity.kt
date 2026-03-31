@@ -80,7 +80,7 @@ class MainActivity : AppCompatActivity() {
         updateBackgroundButtonState()
         if (GestureForegroundService.isRunning()) {
             stopLocalCamera()
-            binding.liveStatusText.text = "BACKGROUND MODE ACTIVE"
+            binding.liveStatusText.text = GestureForegroundService.currentStatus()
         }
     }
 
@@ -229,6 +229,7 @@ class MainActivity : AppCompatActivity() {
         }
         if (GestureForegroundService.isRunning()) {
             binding.backgroundButton.text = getString(R.string.background_control_stop)
+            binding.liveStatusText.text = GestureForegroundService.currentStatus()
         } else {
             binding.backgroundButton.text = getString(R.string.background_control_start)
         }
