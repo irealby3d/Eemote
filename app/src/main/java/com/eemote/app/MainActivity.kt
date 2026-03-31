@@ -193,7 +193,10 @@ class MainActivity : AppCompatActivity() {
         highlightCard(gesture.category)
 
         if (isAccessibilityEnabled()) {
-            RemoteAccessibilityService.dispatch(gesture.command)
+            val sent = RemoteAccessibilityService.dispatch(gesture.command)
+            if (!sent) {
+                binding.liveStatusText.text = getString(R.string.action_blocked_accessibility)
+            }
         }
     }
 

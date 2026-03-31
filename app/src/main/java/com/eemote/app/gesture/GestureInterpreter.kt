@@ -120,11 +120,11 @@ class GestureInterpreter {
 
     private fun extensionState(landmarks: List<NormalizedLandmark>): ExtensionState {
         val wrist = point(landmarks, 0)
-        val thumb = isExtended(landmarks, wrist, tip = 4, base = 2, factor = 1.08f)
-        val index = isExtended(landmarks, wrist, tip = 8, base = 6)
-        val middle = isExtended(landmarks, wrist, tip = 12, base = 10)
-        val ring = isExtended(landmarks, wrist, tip = 16, base = 14)
-        val pinky = isExtended(landmarks, wrist, tip = 20, base = 18)
+        val thumb = isExtended(landmarks, wrist, tip = 4, base = 2, factor = 1.06f, checkVertical = false)
+        val index = isExtended(landmarks, wrist, tip = 8, base = 6, factor = 1.08f, checkVertical = true)
+        val middle = isExtended(landmarks, wrist, tip = 12, base = 10, factor = 1.08f, checkVertical = true)
+        val ring = isExtended(landmarks, wrist, tip = 16, base = 14, factor = 1.08f, checkVertical = true)
+        val pinky = isExtended(landmarks, wrist, tip = 20, base = 18, factor = 1.08f, checkVertical = true)
         return ExtensionState(thumb, index, middle, ring, pinky)
     }
 
@@ -134,10 +134,16 @@ class GestureInterpreter {
         tip: Int,
         base: Int,
         factor: Float = 1.12f,
+        checkVertical: Boolean = true,
     ): Boolean {
+        val tipPoint = point(landmarks, tip)
+        val basePoint = point(landmarks, base)
+
         val tipDistance = distance(point(landmarks, tip), wrist)
         val baseDistance = distance(point(landmarks, base), wrist)
-        return tipDistance > baseDistance * factor
+        val byDistance = tipDistance > baseDistance * factor
+        val byVertical = (basePoint.second - tipPoint.second) > 0.02f
+        return byDistance || (checkVertical && byVertical)
     }
 
     private fun point(landmarks: List<NormalizedLandmark>, idx: Int): Pair<Float, Float> {

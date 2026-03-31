@@ -15,4 +15,5 @@
     <string name="background_stop">Stop</string>
     <string name="background_need_accessibility">Enable Accessibility Service first</string>
     <string name="background_notif_accessibility_off">Accessibility service is OFF</string>
+    <string name="action_blocked_accessibility">Gesture detected, but Accessibility not connected</string>
 </resources>
