@@ -74,17 +74,27 @@ class MainActivity : AppCompatActivity() {
                 it.setSurfaceProvider(binding.previewView.surfaceProvider)
             }
 
-            analyzer = HandGestureAnalyzer(
-                context = this,
-                onGestureDetected = { gesture -> runOnUiThread { onGestureDetected(gesture) } },
-                onDetectionState = { state -> runOnUiThread { binding.liveStatusText.text = state } },
-            )
+            analyzer = try {
+                HandGestureAnalyzer(
+                    context = this,
+                    onGestureDetected = { gesture -> runOnUiThread { onGestureDetected(gesture) } },
+                    onDetectionState = { state -> runOnUiThread { binding.liveStatusText.text = state } },
+                )
+            } catch (_: Throwable) {
+                binding.liveStatusText.text = "ANALYZER INIT FAILED"
+                null
+            }
+            val currentAnalyzer = analyzer
+            if (currentAnalyzer == null) {
+                binding.liveStatusText.text = "ANALYZER INIT FAILED"
+                return@addListener
+            }
 
             val imageAnalyzer = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
                 .also {
-                    it.setAnalyzer(cameraExecutor, analyzer!!)
+                    it.setAnalyzer(cameraExecutor, currentAnalyzer)
                 }
 
             try {

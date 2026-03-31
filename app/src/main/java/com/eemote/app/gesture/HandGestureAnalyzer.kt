@@ -19,10 +19,26 @@ class HandGestureAnalyzer(
 ) : ImageAnalysis.Analyzer {
 
     private val gestureInterpreter = GestureInterpreter()
-    private val handLandmarker: HandLandmarker = createHandLandmarker(context)
+    private var handLandmarker: HandLandmarker? = null
+
+    init {
+        handLandmarker = try {
+            createHandLandmarker(context)
+        } catch (_: Throwable) {
+            onDetectionState("MODEL INIT FAILED")
+            null
+        }
+    }
 
     @OptIn(ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {
+        val landmarker = handLandmarker
+        if (landmarker == null) {
+            onDetectionState("MODEL INIT FAILED")
+            imageProxy.close()
+            return
+        }
+
         val mediaImage = imageProxy.image
         if (mediaImage == null) {
             imageProxy.close()
@@ -35,7 +51,7 @@ class HandGestureAnalyzer(
                 .setRotationDegrees(imageProxy.imageInfo.rotationDegrees)
                 .build()
 
-            val result = handLandmarker.detect(mpImage, imageProcessingOptions)
+            val result = landmarker.detect(mpImage, imageProcessingOptions)
             val handLandmarks: List<List<NormalizedLandmark>> = result.landmarks()
             if (handLandmarks.isNotEmpty()) {
                 onDetectionState("HAND DETECTED")
@@ -57,7 +73,7 @@ class HandGestureAnalyzer(
     }
 
     fun close() {
-        handLandmarker.close()
+        handLandmarker?.close()
     }
 
     private fun createHandLandmarker(context: Context): HandLandmarker {
