@@ -26,6 +26,14 @@
    ```
 4. Install APK on device.
 5. Open app and tap **Enable Accessibility Service**, then enable `Eemote Remote Service`.
+6. Tap **Start Background Control** and then switch to other apps.
+
+## MIUI/POCO Notes
+
+For Xiaomi/POCO devices, allow background execution:
+- Settings -> Apps -> Manage apps -> Eemote -> Battery saver -> No restrictions
+- Enable Auto-start for Eemote
+- Keep notification permission enabled (Android 13+)
 
 ## GitHub Actions (Auto SDK + APK Types)
 

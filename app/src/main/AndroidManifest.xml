@@ -7,6 +7,9 @@
         android:required="true" />
 
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="true"
@@ -38,6 +41,12 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/remote_accessibility_service" />
         </service>
+
+        <service
+            android:name=".service.GestureForegroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="camera" />
 
     </application>
 

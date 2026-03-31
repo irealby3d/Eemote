@@ -2,4 +2,15 @@
     <string name="app_name">Eemote</string>
     <string name="accessibility_service_label">Eemote Remote Service</string>
     <string name="accessibility_service_description">Executes phone navigation and swipe actions from hand gestures.</string>
+    <string name="background_control_start">Start Background Control</string>
+    <string name="background_control_stop">Stop Background Control</string>
+    <string name="background_notif_title">Eemote Background Remote</string>
+    <string name="background_notif_starting">Starting camera analyzer…</string>
+    <string name="background_notif_running">Background gesture control is active</string>
+    <string name="background_notif_camera_denied">Camera permission is not granted</string>
+    <string name="background_notif_camera_failed">Camera failed to start</string>
+    <string name="background_notif_analyzer_failed">Gesture analyzer failed to start</string>
+    <string name="background_notif_channel_name">Eemote Background Control</string>
+    <string name="background_notif_channel_desc">Keeps camera gesture control active while app is in background</string>
+    <string name="background_stop">Stop</string>
 </resources>
