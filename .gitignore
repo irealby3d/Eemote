@@ -1,0 +1,17 @@
+# Gradle/IDE
+.gradle/
+build/
+*/build/
+.idea/
+*.iml
+
+# Local SDK config
+local.properties
+
+# Temporary/internal files
+*.log
+*.tmp
+.res_backup_*
+
+# macOS
+.DS_Store

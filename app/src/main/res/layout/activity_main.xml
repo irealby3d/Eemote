@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#EEF4FF">
+
+    <TextView
+        android:id="@+id/titleText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Eemote"
+        android:textStyle="bold"
+        android:textSize="28sp"
+        android:textColor="#0D1B3E" />
+
+    <TextView
+        android:id="@+id/subtitleText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Camera + Hand Gesture Remote"
+        android:textColor="#3E4C71"
+        android:textSize="14sp" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="240dp"
+        android:layout_marginTop="12dp"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="2dp">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <androidx.camera.view.PreviewView
+                android:id="@+id/previewView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+            <TextView
+                android:id="@+id/liveStatusText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|end"
+                android:layout_margin="12dp"
+                android:background="#99000000"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="6dp"
+                android:text="WAITING"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold" />
+        </FrameLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <Button
+        android:id="@+id/accessibilityButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Enable Accessibility Service" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:layout_marginTop="12dp">
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardStop"
+            style="@style/GestureCardStyle"
+            android:layout_marginBottom="8dp">
+            <TextView style="@style/GestureLabelStyle" android:text="STOP  -> Pause actions" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardRotate"
+            style="@style/GestureCardStyle"
+            android:layout_marginBottom="8dp">
+            <TextView style="@style/GestureLabelStyle" android:text="ROTATE -> Open recents" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardZoom"
+            style="@style/GestureCardStyle"
+            android:layout_marginBottom="8dp">
+            <TextView style="@style/GestureLabelStyle" android:text="ZOOM   -> Volume +/-" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardTurn"
+            style="@style/GestureCardStyle"
+            android:layout_marginBottom="8dp">
+            <TextView style="@style/GestureLabelStyle" android:text="TURN   -> Back/Home" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardSwipe"
+            style="@style/GestureCardStyle">
+            <TextView style="@style/GestureLabelStyle" android:text="SWIPE  -> Screen swipe" />
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+
+</LinearLayout>

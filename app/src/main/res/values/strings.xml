@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Eemote</string>
+    <string name="accessibility_service_label">Eemote Remote Service</string>
+    <string name="accessibility_service_description">Executes phone navigation and swipe actions from hand gestures.</string>
+</resources>
