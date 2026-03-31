@@ -2,6 +2,7 @@ package com.eemote.app.gesture
 
 import android.content.Context
 import android.os.SystemClock
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.google.mediapipe.framework.image.MediaImageBuilder
@@ -20,6 +21,7 @@ class HandGestureAnalyzer(
     private val gestureInterpreter = GestureInterpreter()
     private val handLandmarker: HandLandmarker = createHandLandmarker(context)
 
+    @OptIn(ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {
         val mediaImage = imageProxy.image
         if (mediaImage == null) {
