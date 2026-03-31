@@ -91,11 +91,11 @@ jobs:
               ;;
             armv7)
               echo "gradle_props=-PSPLIT_PER_ABI=false -PBUILD_UNIVERSAL=false -PTARGET_ABI=armeabi-v7a" >> "$GITHUB_OUTPUT"
-              echo "artifact_glob=app/build/outputs/apk/release/*armeabi-v7a*.apk" >> "$GITHUB_OUTPUT"
+              echo "artifact_glob=app/build/outputs/apk/release/*.apk" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "gradle_props=-PSPLIT_PER_ABI=false -PBUILD_UNIVERSAL=false -PTARGET_ABI=arm64-v8a" >> "$GITHUB_OUTPUT"
-              echo "artifact_glob=app/build/outputs/apk/release/*arm64-v8a*.apk" >> "$GITHUB_OUTPUT"
+              echo "artifact_glob=app/build/outputs/apk/release/*.apk" >> "$GITHUB_OUTPUT"
               TYPE="arm64"
               ;;
           esac
