@@ -55,6 +55,9 @@ android {
             isMinifyEnabled = false
             if (!System.getenv("ANDROID_KEYSTORE_PATH").isNullOrBlank()) {
                 signingConfig = signingConfigs.getByName("release")
+            } else {
+                // Fallback for CI/dev usage so release APK remains installable.
+                signingConfig = signingConfigs.getByName("debug")
             }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

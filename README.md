@@ -49,7 +49,7 @@ Optional signed release (GitHub `Settings -> Secrets and variables -> Actions`):
 - `ANDROID_KEY_ALIAS`
 - `ANDROID_KEY_PASSWORD`
 
-If these secrets are not set, release APK is generated unsigned.
+If these secrets are not set, release APK falls back to debug signing (installable for testing).
 
 ## Notes
 
