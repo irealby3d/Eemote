@@ -6,6 +6,9 @@ plugins {
 android {
     namespace = "com.eemote.app"
     compileSdk = 34
+    val targetAbi = (project.findProperty("TARGET_ABI") as String?)?.trim().orEmpty()
+    val splitPerAbi = (project.findProperty("SPLIT_PER_ABI") as String?)?.toBoolean() ?: false
+    val buildUniversal = (project.findProperty("BUILD_UNIVERSAL") as String?)?.toBoolean() ?: false
 
     defaultConfig {
         applicationId = "com.eemote.app"
@@ -14,7 +17,14 @@ android {
         versionCode = 1
         versionName = "1.0"
         ndk {
-            abiFilters += "arm64-v8a"
+            // Default build is ARM64. Workflow can override via -PTARGET_ABI.
+            if (!splitPerAbi && targetAbi != "all") {
+                when (targetAbi) {
+                    "", "arm64-v8a" -> abiFilters += "arm64-v8a"
+                    "armeabi-v7a" -> abiFilters += "armeabi-v7a"
+                    else -> error("Unsupported TARGET_ABI: $targetAbi")
+                }
+            }
         }
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -50,6 +60,15 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+    }
+
+    splits {
+        abi {
+            isEnable = splitPerAbi
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = buildUniversal
         }
     }
 

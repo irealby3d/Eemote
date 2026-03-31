@@ -1,11 +1,25 @@
-name: Android ARM64 APK
+name: Build Android APK
 
 on:
   workflow_dispatch:
+    inputs:
+      build_type:
+        description: "APK turi"
+        required: true
+        default: "arm64"
+        type: choice
+        options:
+          - "split"
+          - "universal"
+          - "arm64"
+          - "armv7"
   push:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 permissions:
   contents: read
@@ -13,16 +27,15 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          distribution: "temurin"
           java-version: "17"
 
       - name: Set up Gradle cache
@@ -31,7 +44,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Configure SDK and install packages
+      - name: Install Android SDK packages
         shell: bash
         run: |
           if [ -n "${ANDROID_SDK_ROOT}" ]; then
@@ -42,6 +55,8 @@ jobs:
             echo "ANDROID_SDK_ROOT/ANDROID_HOME topilmadi" >&2
             exit 1
           fi
+
+          yes | sdkmanager --licenses > /dev/null || true
           sdkmanager --install \
             "platform-tools" \
             "platforms;android-34" \
@@ -65,22 +80,46 @@ jobs:
             echo "No keystore secret provided; release APK will be unsigned."
           fi
 
+      - name: Resolve build type
+        id: cfg
+        shell: bash
+        run: |
+          TYPE="${{ github.event.inputs.build_type }}"
+          if [ -z "${TYPE}" ]; then
+            TYPE="arm64"
+          fi
+
+          case "${TYPE}" in
+            split)
+              echo "gradle_props=-PSPLIT_PER_ABI=true -PBUILD_UNIVERSAL=false -PTARGET_ABI=all" >> "$GITHUB_OUTPUT"
+              echo "artifact_glob=app/build/outputs/apk/release/*.apk" >> "$GITHUB_OUTPUT"
+              ;;
+            universal)
+              echo "gradle_props=-PSPLIT_PER_ABI=false -PBUILD_UNIVERSAL=false -PTARGET_ABI=all" >> "$GITHUB_OUTPUT"
+              echo "artifact_glob=app/build/outputs/apk/release/*release*.apk" >> "$GITHUB_OUTPUT"
+              ;;
+            armv7)
+              echo "gradle_props=-PSPLIT_PER_ABI=false -PBUILD_UNIVERSAL=false -PTARGET_ABI=armeabi-v7a" >> "$GITHUB_OUTPUT"
+              echo "artifact_glob=app/build/outputs/apk/release/*armeabi-v7a*.apk" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "gradle_props=-PSPLIT_PER_ABI=false -PBUILD_UNIVERSAL=false -PTARGET_ABI=arm64-v8a" >> "$GITHUB_OUTPUT"
+              echo "artifact_glob=app/build/outputs/apk/release/*arm64-v8a*.apk" >> "$GITHUB_OUTPUT"
+              TYPE="arm64"
+              ;;
+          esac
+
+          echo "build_type=${TYPE}" >> "$GITHUB_OUTPUT"
+
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      - name: Build ARM64 debug/release APK
-        run: ./gradlew clean assembleDebug assembleRelease --stacktrace
+      - name: Build APK
+        run: ./gradlew clean assembleRelease ${{ steps.cfg.outputs.gradle_props }} --stacktrace
 
-      - name: Upload debug APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: eemote-arm64-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-
-      - name: Upload release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: eemote-arm64-release-apk
-          path: app/build/outputs/apk/release/*.apk
+          name: eemote-${{ steps.cfg.outputs.build_type }}-apk
+          path: ${{ steps.cfg.outputs.artifact_glob }}
           if-no-files-found: error

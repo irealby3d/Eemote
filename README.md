@@ -27,14 +27,21 @@
 4. Install APK on device.
 5. Open app and tap **Enable Accessibility Service**, then enable `Eemote Remote Service`.
 
-## GitHub Actions (ARM64 APK)
+## GitHub Actions (Auto SDK + APK Types)
 
 Workflow file:
 - `.github/workflows/android-arm64.yml`
 
-It builds and uploads:
-- `eemote-arm64-debug-apk`
-- `eemote-arm64-release-apk`
+Workflow automatically installs Android SDK packages (`platform-tools`, `platforms;android-34`, `build-tools;34.0.0`) and builds selected APK type.
+
+Manual run options (`workflow_dispatch -> build_type`):
+- `arm64` (default)
+- `armv7`
+- `universal`
+- `split`
+
+Uploaded artifact name format:
+- `eemote-<build_type>-apk`
 
 Optional signed release (GitHub `Settings -> Secrets and variables -> Actions`):
 - `ANDROID_KEYSTORE_BASE64`
