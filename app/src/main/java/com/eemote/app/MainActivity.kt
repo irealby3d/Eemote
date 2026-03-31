@@ -167,6 +167,11 @@ class MainActivity : AppCompatActivity() {
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             return
         }
+        if (!isAccessibilityEnabled()) {
+            binding.liveStatusText.text = getString(R.string.background_need_accessibility)
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            return
+        }
 
         requestNotificationPermissionIfNeeded()
         stopLocalCamera()
@@ -218,6 +223,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateBackgroundButtonState() {
+        if (!isAccessibilityEnabled() && !GestureForegroundService.isRunning()) {
+            binding.backgroundButton.text = getString(R.string.background_need_accessibility)
+            return
+        }
         if (GestureForegroundService.isRunning()) {
             binding.backgroundButton.text = getString(R.string.background_control_stop)
         } else {

@@ -113,6 +113,10 @@ class GestureForegroundService : LifecycleService() {
     }
 
     private fun onGestureDetected(gesture: DetectedGesture) {
+        if (!RemoteAccessibilityService.isRunning()) {
+            updateNotification(getString(R.string.background_notif_accessibility_off))
+            return
+        }
         RemoteAccessibilityService.dispatch(gesture.command)
         updateNotification("Gesture: ${gesture.command.name}")
     }
