@@ -32,7 +32,7 @@
 Workflow file:
 - `.github/workflows/android-arm64.yml`
 
-Workflow automatically installs Android SDK packages (`platform-tools`, `platforms;android-34`, `build-tools;34.0.0`) and builds selected APK type.
+Workflow SDK/library yuklab olmaydi; GitHub runnerdagi mavjud Android SDK bilan build qiladi.
 
 Manual run options (`workflow_dispatch -> build_type`):
 - `arm64` (default)
