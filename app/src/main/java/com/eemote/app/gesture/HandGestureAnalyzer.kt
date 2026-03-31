@@ -51,13 +51,14 @@ class HandGestureAnalyzer(
                 .setRotationDegrees(imageProxy.imageInfo.rotationDegrees)
                 .build()
 
-            val result = landmarker.detect(mpImage, imageProcessingOptions)
+            val timestamp = SystemClock.uptimeMillis()
+            val result = landmarker.detectForVideo(mpImage, imageProcessingOptions, timestamp)
             val handLandmarks: List<List<NormalizedLandmark>> = result.landmarks()
             if (handLandmarks.isNotEmpty()) {
                 onDetectionState("HAND DETECTED")
                 val gesture = gestureInterpreter.interpret(
                     handLandmarks.first(),
-                    SystemClock.uptimeMillis(),
+                    timestamp,
                 )
                 if (gesture != null) {
                     onGestureDetected(gesture)
@@ -83,11 +84,11 @@ class HandGestureAnalyzer(
 
         val options = HandLandmarker.HandLandmarkerOptions.builder()
             .setBaseOptions(baseOptions)
-            .setMinHandDetectionConfidence(0.55f)
-            .setMinHandPresenceConfidence(0.55f)
-            .setMinTrackingConfidence(0.55f)
+            .setMinHandDetectionConfidence(0.35f)
+            .setMinHandPresenceConfidence(0.35f)
+            .setMinTrackingConfidence(0.35f)
             .setNumHands(1)
-            .setRunningMode(RunningMode.IMAGE)
+            .setRunningMode(RunningMode.VIDEO)
             .build()
 
         return HandLandmarker.createFromOptions(context, options)

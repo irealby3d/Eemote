@@ -23,29 +23,29 @@ class GestureInterpreter {
         val pinchDistance = distance(point(landmarks, 4), point(landmarks, 8))
 
         if (ext.totalExtended >= 4) {
-            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.STOP, GestureCommand.STOP), 900)
+            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.STOP, GestureCommand.STOP), 700)
         }
 
-        if (ext.index && ext.middle && !ext.ring && !ext.pinky && abs(movement.first) + abs(movement.second) > 0.08f) {
+        if (ext.totalExtended >= 2 && abs(movement.first) + abs(movement.second) > 0.06f) {
             val command = dominantSwipeCommand(movement)
-            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.SWIPE, command), 800)
+            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.SWIPE, command), 550)
         }
 
         val pinchDelta = lastPinchDistance?.let { pinchDistance - it }
         lastPinchDistance = pinchDistance
 
-        if (ext.thumb && ext.index && !ext.middle && !ext.ring && !ext.pinky && pinchDelta != null && abs(pinchDelta) > 0.015f) {
+        if (ext.thumb && ext.index && !ext.middle && !ext.ring && !ext.pinky && pinchDelta != null && abs(pinchDelta) > 0.008f) {
             val command = if (pinchDelta > 0f) GestureCommand.ZOOM_IN else GestureCommand.ZOOM_OUT
-            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.ZOOM, command), 700)
+            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.ZOOM, command), 500)
         }
 
-        if (ext.index && !ext.thumb && !ext.middle && !ext.ring && !ext.pinky && abs(movement.first) > 0.05f) {
+        if (ext.index && !ext.thumb && !ext.middle && !ext.ring && !ext.pinky && abs(movement.first) > 0.025f) {
             val command = if (movement.first > 0f) GestureCommand.TURN_RIGHT else GestureCommand.TURN_LEFT
-            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.TURN, command), 800)
+            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.TURN, command), 500)
         }
 
-        if (ext.totalExtended == 0 && points.size >= 6 && hasCircularMotion()) {
-            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.ROTATE, GestureCommand.ROTATE), 1200)
+        if (ext.totalExtended <= 1 && points.size >= 6 && hasCircularMotion()) {
+            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.ROTATE, GestureCommand.ROTATE), 900)
         }
 
         return null

@@ -117,8 +117,12 @@ class GestureForegroundService : LifecycleService() {
             updateNotification(getString(R.string.background_notif_accessibility_off))
             return
         }
-        RemoteAccessibilityService.dispatch(gesture.command)
-        updateNotification("Gesture: ${gesture.command.name}")
+        val dispatched = RemoteAccessibilityService.dispatch(gesture.command)
+        if (dispatched) {
+            updateNotification("Gesture: ${gesture.command.name}")
+        } else {
+            updateNotification("Gesture detected, action blocked")
+        }
     }
 
     private fun maybeUpdateNotification(text: String) {
