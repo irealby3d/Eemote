@@ -73,6 +73,8 @@
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardStop"
             style="@style/GestureCardStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:layout_marginBottom="8dp">
             <TextView style="@style/GestureLabelStyle" android:text="STOP  -> Pause actions" />
         </com.google.android.material.card.MaterialCardView>
@@ -80,6 +82,8 @@
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardRotate"
             style="@style/GestureCardStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:layout_marginBottom="8dp">
             <TextView style="@style/GestureLabelStyle" android:text="ROTATE -> Open recents" />
         </com.google.android.material.card.MaterialCardView>
@@ -87,6 +91,8 @@
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardZoom"
             style="@style/GestureCardStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:layout_marginBottom="8dp">
             <TextView style="@style/GestureLabelStyle" android:text="ZOOM   -> Volume +/-" />
         </com.google.android.material.card.MaterialCardView>
@@ -94,13 +100,17 @@
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardTurn"
             style="@style/GestureCardStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:layout_marginBottom="8dp">
             <TextView style="@style/GestureLabelStyle" android:text="TURN   -> Back/Home" />
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardSwipe"
-            style="@style/GestureCardStyle">
+            style="@style/GestureCardStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
             <TextView style="@style/GestureLabelStyle" android:text="SWIPE  -> Screen swipe" />
         </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
