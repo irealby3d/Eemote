@@ -6,11 +6,13 @@ import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.google.mediapipe.framework.image.MediaImageBuilder
-import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
+import com.google.mediapipe.tasks.components.containers.Category
+import com.google.mediapipe.tasks.components.processors.ClassifierOptions
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.core.ImageProcessingOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
-import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarker
+import com.google.mediapipe.tasks.vision.gesturerecognizer.GestureRecognizer
+import com.google.mediapipe.tasks.vision.gesturerecognizer.GestureRecognizerResult
 
 class HandGestureAnalyzer(
     context: Context,
@@ -19,11 +21,11 @@ class HandGestureAnalyzer(
 ) : ImageAnalysis.Analyzer {
 
     private val gestureInterpreter = GestureInterpreter()
-    private var handLandmarker: HandLandmarker? = null
+    private var gestureRecognizer: GestureRecognizer? = null
 
     init {
-        handLandmarker = try {
-            createHandLandmarker(context)
+        gestureRecognizer = try {
+            createGestureRecognizer(context)
         } catch (_: Throwable) {
             onDetectionState("MODEL INIT FAILED")
             null
@@ -32,8 +34,8 @@ class HandGestureAnalyzer(
 
     @OptIn(ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {
-        val landmarker = handLandmarker
-        if (landmarker == null) {
+        val recognizer = gestureRecognizer
+        if (recognizer == null) {
             onDetectionState("MODEL INIT FAILED")
             imageProxy.close()
             return
@@ -52,19 +54,25 @@ class HandGestureAnalyzer(
                 .build()
 
             val timestamp = SystemClock.uptimeMillis()
-            val result = landmarker.detectForVideo(mpImage, imageProcessingOptions, timestamp)
-            val handLandmarks: List<List<NormalizedLandmark>> = result.landmarks()
-            if (handLandmarks.isNotEmpty()) {
-                onDetectionState("HAND DETECTED")
-                val gesture = gestureInterpreter.interpret(
-                    handLandmarks.first(),
-                    timestamp,
-                )
-                if (gesture != null) {
-                    onGestureDetected(gesture)
-                }
-            } else {
+            val result = recognizer.recognizeForVideo(mpImage, imageProcessingOptions, timestamp)
+            val handLandmarks = result.landmarks()
+
+            if (handLandmarks.isEmpty()) {
                 onDetectionState("SHOW HAND")
+                return
+            }
+
+            val template = topTemplate(result)
+            onDetectionState(renderDetectionState(template))
+
+            val gesture = gestureInterpreter.interpret(
+                landmarks = handLandmarks.first(),
+                templateName = template?.categoryName(),
+                templateScore = template?.score() ?: 0f,
+                timestampMs = timestamp,
+            )
+            if (gesture != null) {
+                onGestureDetected(gesture)
             }
         } catch (_: Throwable) {
             onDetectionState("DETECTION ERROR")
@@ -74,27 +82,57 @@ class HandGestureAnalyzer(
     }
 
     fun close() {
-        handLandmarker?.close()
+        gestureRecognizer?.close()
+        gestureRecognizer = null
     }
 
-    private fun createHandLandmarker(context: Context): HandLandmarker {
+    private fun topTemplate(result: GestureRecognizerResult): Category? {
+        return result.gestures()
+            .firstOrNull()
+            ?.maxByOrNull { it.score() }
+            ?.takeIf { it.categoryName().isNotBlank() }
+    }
+
+    private fun renderDetectionState(template: Category?): String {
+        if (template == null) return "HAND DETECTED"
+
+        val rawName = template.categoryName()
+            .ifBlank { template.displayName() }
+            .ifBlank { "HAND" }
+
+        if (rawName.equals("none", ignoreCase = true)) {
+            return "HAND DETECTED"
+        }
+
+        val prettyName = rawName.replace('_', ' ')
+        val percent = (template.score() * 100f).toInt().coerceIn(0, 100)
+        return "$prettyName $percent%"
+    }
+
+    private fun createGestureRecognizer(context: Context): GestureRecognizer {
         val baseOptions = BaseOptions.builder()
             .setModelAssetPath(MODEL_FILE)
             .build()
 
-        val options = HandLandmarker.HandLandmarkerOptions.builder()
-            .setBaseOptions(baseOptions)
-            .setMinHandDetectionConfidence(0.35f)
-            .setMinHandPresenceConfidence(0.35f)
-            .setMinTrackingConfidence(0.35f)
-            .setNumHands(1)
-            .setRunningMode(RunningMode.VIDEO)
+        val cannedClassifierOptions = ClassifierOptions.builder()
+            .setScoreThreshold(0.38f)
+            .setMaxResults(2)
             .build()
 
-        return HandLandmarker.createFromOptions(context, options)
+        val options = GestureRecognizer.GestureRecognizerOptions.builder()
+            .setBaseOptions(baseOptions)
+            .setRunningMode(RunningMode.VIDEO)
+            .setNumHands(1)
+            .setMinHandDetectionConfidence(0.40f)
+            .setMinHandPresenceConfidence(0.40f)
+            .setMinTrackingConfidence(0.35f)
+            .setCannedGesturesClassifierOptions(cannedClassifierOptions)
+            .build()
+
+        return GestureRecognizer.createFromOptions(context, options)
     }
 
     companion object {
-        private const val MODEL_FILE = "hand_landmarker.task"
+        private const val MODEL_FILE = "gesture_recognizer.task"
     }
 }

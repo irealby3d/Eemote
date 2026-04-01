@@ -1,14 +1,19 @@
 # Eemote (Android Hand Gesture Remote)
 
-`Eemote` is an Android prototype app that uses the phone camera to detect hand gestures and trigger phone control actions through an Accessibility Service.
+`Eemote` is an Android app that uses the phone camera to detect hand gestures and trigger phone control actions through an Accessibility Service.
+
+The latest build uses the official MediaPipe `GestureRecognizer` template model for stronger real-device stability.
 
 ## Gesture Mapping
 
-- `STOP` (open palm): pause command execution (safe no-op)
+- `STOP` (open palm): pauses actions for ~2 seconds (safe no-op)
 - `ROTATE` (closed fist + circular move): open recent apps
 - `ZOOM` (thumb/index pinch in or out): volume down/up
-- `TURN` (index finger move left/right): back/home
-- `SWIPE` (two-finger V + movement): swipe left/right/up/down
+- `TURN`:
+  - `thumb up` -> home
+  - `thumb down` -> back
+  - one-finger fallback -> back/home
+- `SWIPE` (victory/two-finger + movement): swipe left/right/up/down
 
 ## Requirements
 
@@ -59,8 +64,12 @@ Optional signed release (GitHub `Settings -> Secrets and variables -> Actions`):
 
 If these secrets are not set, release APK falls back to debug signing (installable for testing).
 
-## Notes
+## Models and Templates
 
-- Model file is bundled at:
-  - `app/src/main/assets/hand_landmarker.task`
-- Gesture recognition is heuristic-based and may need threshold tuning per device/camera distance.
+Bundled model assets:
+- `app/src/main/assets/gesture_recognizer.task` (primary template model)
+
+Template labels from the official model that are used by Eemote:
+- `Open_Palm`, `Closed_Fist`, `Pointing_Up`, `Thumb_Up`, `Thumb_Down`, `Victory`
+
+Eemote combines template labels + landmark motion + temporal smoothing (cooldowns/stability windows) for more reliable gesture actions on POCO/Xiaomi style devices.

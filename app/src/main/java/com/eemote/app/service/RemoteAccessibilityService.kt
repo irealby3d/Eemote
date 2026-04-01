@@ -5,6 +5,7 @@ import android.accessibilityservice.GestureDescription
 import android.content.Context
 import android.graphics.Path
 import android.media.AudioManager
+import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
 import com.eemote.app.gesture.GestureCommand
 
@@ -24,6 +25,7 @@ class RemoteAccessibilityService : AccessibilityService() {
         if (instance === this) {
             instance = null
         }
+        clearDispatchState()
         return super.onUnbind(intent)
     }
 
@@ -77,11 +79,46 @@ class RemoteAccessibilityService : AccessibilityService() {
     companion object {
         @Volatile
         private var instance: RemoteAccessibilityService? = null
+        @Volatile
+        private var lastDispatchAt = 0L
+        private val lastCommandAt = mutableMapOf<GestureCommand, Long>()
 
+        private const val GLOBAL_COOLDOWN_MS = 180L
+
+        @Synchronized
         fun dispatch(command: GestureCommand): Boolean {
-            return instance?.execute(command) == true
+            val service = instance ?: return false
+
+            val now = SystemClock.uptimeMillis()
+            if (now - lastDispatchAt < GLOBAL_COOLDOWN_MS) {
+                return false
+            }
+
+            val commandCooldownMs = when (command) {
+                GestureCommand.STOP -> 350L
+                GestureCommand.ZOOM_IN, GestureCommand.ZOOM_OUT -> 320L
+                GestureCommand.SWIPE_LEFT, GestureCommand.SWIPE_RIGHT, GestureCommand.SWIPE_UP, GestureCommand.SWIPE_DOWN -> 420L
+                GestureCommand.ROTATE, GestureCommand.TURN_LEFT, GestureCommand.TURN_RIGHT -> 560L
+            }
+            val lastForCommand = lastCommandAt[command] ?: 0L
+            if (now - lastForCommand < commandCooldownMs) {
+                return false
+            }
+
+            val ok = service.execute(command)
+            if (ok) {
+                lastDispatchAt = now
+                lastCommandAt[command] = now
+            }
+            return ok
         }
 
         fun isRunning(): Boolean = instance != null
+
+        @Synchronized
+        private fun clearDispatchState() {
+            lastDispatchAt = 0L
+            lastCommandAt.clear()
+        }
     }
 }

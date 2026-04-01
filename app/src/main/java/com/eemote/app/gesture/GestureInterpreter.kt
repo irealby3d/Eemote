@@ -7,65 +7,159 @@ import kotlin.math.pow
 import kotlin.math.sqrt
 
 class GestureInterpreter {
-    private val points = ArrayDeque<Pair<Float, Float>>()
-    private var lastPinchDistance: Float? = null
-    private var lastEmittedAt = 0L
+    private data class TimedPoint(val timestampMs: Long, val x: Float, val y: Float)
+    private data class TimedValue(val timestampMs: Long, val value: Float)
+    private data class TemplateHit(val timestampMs: Long, val name: String, val score: Float)
 
-    fun interpret(landmarks: List<NormalizedLandmark>, timestampMs: Long): DetectedGesture? {
+    private val wristTrail = ArrayDeque<TimedPoint>()
+    private val pinchTrail = ArrayDeque<TimedValue>()
+    private val templateTrail = ArrayDeque<TemplateHit>()
+
+    private val lastCommandAt = mutableMapOf<GestureCommand, Long>()
+    private var lastAnyCommandAt = 0L
+    private var pausedUntilMs = 0L
+
+    fun interpret(
+        landmarks: List<NormalizedLandmark>,
+        templateName: String?,
+        templateScore: Float,
+        timestampMs: Long,
+    ): DetectedGesture? {
         if (landmarks.size < 21) return null
 
         val wrist = point(landmarks, 0)
-        points.addLast(wrist)
-        while (points.size > 8) points.removeFirst()
-
-        val ext = extensionState(landmarks)
-        val movement = movementVector()
+        val handSize = estimateHandSize(landmarks)
         val pinchDistance = distance(point(landmarks, 4), point(landmarks, 8))
 
-        if (ext.totalExtended >= 4) {
-            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.STOP, GestureCommand.STOP), 700)
+        trackWrist(timestampMs, wrist)
+        trackPinch(timestampMs, pinchDistance)
+        trackTemplate(timestampMs, templateName, templateScore)
+
+        val normalizedTemplate = normalizeTemplate(templateName)
+        val ext = extensionState(landmarks)
+        val movement = movementVector(windowMs = 460L)
+        val movementMagnitude = magnitude(movement)
+
+        val openPalm = ext.totalExtended >= 4 || isTemplateStable("open_palm", 0.42f, 3, 650L)
+        if (openPalm) {
+            pausedUntilMs = timestampMs + 1800L
+            return emit(
+                timestampMs = timestampMs,
+                gesture = DetectedGesture(GestureCategory.STOP, GestureCommand.STOP),
+                perCommandCooldownMs = 1200L,
+                globalCooldownMs = 300L,
+            )
         }
 
-        if (ext.totalExtended >= 2 && abs(movement.first) + abs(movement.second) > 0.06f) {
-            val command = dominantSwipeCommand(movement)
-            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.SWIPE, command), 550)
+        if (timestampMs < pausedUntilMs) {
+            return null
         }
 
-        val pinchDelta = lastPinchDistance?.let { pinchDistance - it }
-        lastPinchDistance = pinchDistance
+        val circular = hasCircularMotion(handSize)
+        val pinchClosed = pinchDistance < handSize * 0.50f
+        if (
+            circular && (
+                pinchClosed ||
+                    ext.totalExtended <= 1 ||
+                    isTemplateStable("closed_fist", 0.50f, 3, 700L)
+                )
+        ) {
+            return emit(
+                timestampMs = timestampMs,
+                gesture = DetectedGesture(GestureCategory.ROTATE, GestureCommand.ROTATE),
+                perCommandCooldownMs = 1150L,
+            )
+        }
 
-        if (ext.thumb && ext.index && !ext.middle && !ext.ring && !ext.pinky && pinchDelta != null && abs(pinchDelta) > 0.008f) {
+        val pinchDelta = pinchDelta(windowMs = 280L)
+        val pinchShape = (ext.thumb && ext.index && !ext.middle && !ext.ring) || pinchClosed
+        if (pinchShape && pinchDelta != null && abs(pinchDelta) > handSize * 0.11f) {
             val command = if (pinchDelta > 0f) GestureCommand.ZOOM_IN else GestureCommand.ZOOM_OUT
-            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.ZOOM, command), 500)
+            return emit(
+                timestampMs = timestampMs,
+                gesture = DetectedGesture(GestureCategory.ZOOM, command),
+                perCommandCooldownMs = 650L,
+            )
         }
 
-        if (ext.index && !ext.thumb && !ext.middle && !ext.ring && !ext.pinky && abs(movement.first) > 0.025f) {
+        val swipeCandidate = (
+            isTemplateStable("victory", 0.45f, 2, 650L) ||
+                ext.totalExtended >= 2 ||
+                normalizedTemplate == "pointing_up"
+            )
+        if (swipeCandidate && movementMagnitude > handSize * 0.58f) {
+            val command = dominantSwipeCommand(movement)
+            return emit(
+                timestampMs = timestampMs,
+                gesture = DetectedGesture(GestureCategory.SWIPE, command),
+                perCommandCooldownMs = 720L,
+            )
+        }
+
+        if (isTemplateStable("thumb_up", 0.46f, 2, 700L)) {
+            return emit(
+                timestampMs = timestampMs,
+                gesture = DetectedGesture(GestureCategory.TURN, GestureCommand.TURN_RIGHT),
+                perCommandCooldownMs = 1100L,
+            )
+        }
+        if (isTemplateStable("thumb_down", 0.46f, 2, 700L)) {
+            return emit(
+                timestampMs = timestampMs,
+                gesture = DetectedGesture(GestureCategory.TURN, GestureCommand.TURN_LEFT),
+                perCommandCooldownMs = 1100L,
+            )
+        }
+
+        val oneFinger = ext.index && !ext.middle && !ext.ring && !ext.pinky
+        if ((normalizedTemplate == "pointing_up" || oneFinger) && abs(movement.first) > handSize * 0.34f) {
             val command = if (movement.first > 0f) GestureCommand.TURN_RIGHT else GestureCommand.TURN_LEFT
-            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.TURN, command), 500)
+            return emit(
+                timestampMs = timestampMs,
+                gesture = DetectedGesture(GestureCategory.TURN, command),
+                perCommandCooldownMs = 800L,
+            )
         }
 
-        if (ext.totalExtended <= 1 && points.size >= 6 && hasCircularMotion()) {
-            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.ROTATE, GestureCommand.ROTATE), 900)
-        }
-
-        // Fallback static gestures to make control practical on real phones:
-        // 1 finger -> Back, 2 fingers -> Home, 3 fingers -> Recents.
-        if (ext.index && !ext.middle && !ext.ring && !ext.pinky) {
-            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.TURN, GestureCommand.TURN_LEFT), 900)
+        // Static fallback mapping for hard devices/camera angles:
+        // 1 finger => Back, 2 fingers => Home, 3 fingers => Recents.
+        if (oneFinger) {
+            return emit(
+                timestampMs = timestampMs,
+                gesture = DetectedGesture(GestureCategory.TURN, GestureCommand.TURN_LEFT),
+                perCommandCooldownMs = 1300L,
+            )
         }
         if (ext.index && ext.middle && !ext.ring && !ext.pinky) {
-            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.TURN, GestureCommand.TURN_RIGHT), 900)
+            return emit(
+                timestampMs = timestampMs,
+                gesture = DetectedGesture(GestureCategory.TURN, GestureCommand.TURN_RIGHT),
+                perCommandCooldownMs = 1300L,
+            )
         }
         if (ext.index && ext.middle && ext.ring && !ext.pinky) {
-            return emitWithCooldown(timestampMs, DetectedGesture(GestureCategory.ROTATE, GestureCommand.ROTATE), 1000)
+            return emit(
+                timestampMs = timestampMs,
+                gesture = DetectedGesture(GestureCategory.ROTATE, GestureCommand.ROTATE),
+                perCommandCooldownMs = 1400L,
+            )
         }
 
         return null
     }
 
-    private fun emitWithCooldown(timestampMs: Long, gesture: DetectedGesture, cooldownMs: Long): DetectedGesture? {
-        if (timestampMs - lastEmittedAt < cooldownMs) return null
-        lastEmittedAt = timestampMs
+    private fun emit(
+        timestampMs: Long,
+        gesture: DetectedGesture,
+        perCommandCooldownMs: Long,
+        globalCooldownMs: Long = 260L,
+    ): DetectedGesture? {
+        if (timestampMs - lastAnyCommandAt < globalCooldownMs) return null
+        val lastCommandTs = lastCommandAt[gesture.command] ?: 0L
+        if (timestampMs - lastCommandTs < perCommandCooldownMs) return null
+
+        lastAnyCommandAt = timestampMs
+        lastCommandAt[gesture.command] = timestampMs
         return gesture
     }
 
@@ -77,34 +171,105 @@ class GestureInterpreter {
         }
     }
 
-    private fun movementVector(): Pair<Float, Float> {
-        if (points.size < 2) return 0f to 0f
-        val first = points.first()
-        val last = points.last()
-        return (last.first - first.first) to (last.second - first.second)
+    private fun movementVector(windowMs: Long): Pair<Float, Float> {
+        if (wristTrail.size < 2) return 0f to 0f
+        val latest = wristTrail.last()
+        val reference = wristTrail.firstOrNull { latest.timestampMs - it.timestampMs <= windowMs } ?: wristTrail.first()
+        return (latest.x - reference.x) to (latest.y - reference.y)
     }
 
-    private fun hasCircularMotion(): Boolean {
-        if (points.size < 6) return false
-        val centerX = points.map { it.first }.average().toFloat()
-        val centerY = points.map { it.second }.average().toFloat()
-        val radii = points.map { distance(it, centerX to centerY) }
+    private fun hasCircularMotion(handSize: Float): Boolean {
+        if (wristTrail.size < 7) return false
+
+        val recent = wristTrail.takeLast(9)
+        val centerX = recent.map { it.x }.average().toFloat()
+        val centerY = recent.map { it.y }.average().toFloat()
+        val radii = recent.map { distance(it.x to it.y, centerX to centerY) }
         val avgRadius = radii.average().toFloat()
-        if (avgRadius < 0.02f) return false
+        if (avgRadius < handSize * 0.12f) return false
 
         val variance = radii.map { (it - avgRadius).pow(2f) }.average().toFloat()
-        if (variance > 0.0005f) return false
+        if (variance > handSize * handSize * 0.06f) return false
 
         var totalAngle = 0f
-        for (i in 1 until points.size) {
-            val a1 = atan2(points[i - 1].second - centerY, points[i - 1].first - centerX)
-            val a2 = atan2(points[i].second - centerY, points[i].first - centerX)
+        for (i in 1 until recent.size) {
+            val a1 = atan2(recent[i - 1].y - centerY, recent[i - 1].x - centerX)
+            val a2 = atan2(recent[i].y - centerY, recent[i].x - centerX)
             var delta = a2 - a1
             if (delta > Math.PI) delta -= (2 * Math.PI).toFloat()
             if (delta < -Math.PI) delta += (2 * Math.PI).toFloat()
             totalAngle += delta
         }
-        return abs(totalAngle) > 2.6f
+        return abs(totalAngle) > 2.45f
+    }
+
+    private fun pinchDelta(windowMs: Long): Float? {
+        if (pinchTrail.size < 2) return null
+        val latest = pinchTrail.last()
+        val reference = pinchTrail.firstOrNull { latest.timestampMs - it.timestampMs <= windowMs } ?: pinchTrail.first()
+        return latest.value - reference.value
+    }
+
+    private fun trackWrist(timestampMs: Long, point: Pair<Float, Float>) {
+        wristTrail.addLast(TimedPoint(timestampMs, point.first, point.second))
+        while (wristTrail.size > 14) wristTrail.removeFirst()
+        while (wristTrail.isNotEmpty() && timestampMs - wristTrail.first().timestampMs > 1200L) {
+            wristTrail.removeFirst()
+        }
+    }
+
+    private fun trackPinch(timestampMs: Long, pinchDistance: Float) {
+        pinchTrail.addLast(TimedValue(timestampMs, pinchDistance))
+        while (pinchTrail.size > 14) pinchTrail.removeFirst()
+        while (pinchTrail.isNotEmpty() && timestampMs - pinchTrail.first().timestampMs > 900L) {
+            pinchTrail.removeFirst()
+        }
+    }
+
+    private fun trackTemplate(timestampMs: Long, templateName: String?, templateScore: Float) {
+        val normalized = normalizeTemplate(templateName)
+        if (normalized.isBlank() || normalized == "none") return
+
+        templateTrail.addLast(TemplateHit(timestampMs, normalized, templateScore))
+        while (templateTrail.size > 16) templateTrail.removeFirst()
+        while (templateTrail.isNotEmpty() && timestampMs - templateTrail.first().timestampMs > 1400L) {
+            templateTrail.removeFirst()
+        }
+    }
+
+    private fun isTemplateStable(
+        name: String,
+        minScore: Float,
+        minHits: Int,
+        withinMs: Long,
+    ): Boolean {
+        if (templateTrail.isEmpty()) return false
+        val latestTs = templateTrail.last().timestampMs
+        return templateTrail.count {
+            it.name == name &&
+                it.score >= minScore &&
+                latestTs - it.timestampMs <= withinMs
+        } >= minHits
+    }
+
+    private fun normalizeTemplate(templateName: String?): String {
+        return templateName
+            ?.trim()
+            ?.lowercase()
+            ?.replace(' ', '_')
+            ?: ""
+    }
+
+    private fun estimateHandSize(landmarks: List<NormalizedLandmark>): Float {
+        val wrist = point(landmarks, 0)
+        val middleMcp = point(landmarks, 9)
+        val ringMcp = point(landmarks, 13)
+        val palm = (distance(wrist, middleMcp) + distance(wrist, ringMcp)) / 2f
+        return palm.coerceAtLeast(0.06f)
+    }
+
+    private fun magnitude(vector: Pair<Float, Float>): Float {
+        return sqrt(vector.first * vector.first + vector.second * vector.second)
     }
 
     private data class ExtensionState(
@@ -121,10 +286,10 @@ class GestureInterpreter {
     private fun extensionState(landmarks: List<NormalizedLandmark>): ExtensionState {
         val wrist = point(landmarks, 0)
         val thumb = isExtended(landmarks, wrist, tip = 4, base = 2, factor = 1.06f, checkVertical = false)
-        val index = isExtended(landmarks, wrist, tip = 8, base = 6, factor = 1.08f, checkVertical = true)
-        val middle = isExtended(landmarks, wrist, tip = 12, base = 10, factor = 1.08f, checkVertical = true)
-        val ring = isExtended(landmarks, wrist, tip = 16, base = 14, factor = 1.08f, checkVertical = true)
-        val pinky = isExtended(landmarks, wrist, tip = 20, base = 18, factor = 1.08f, checkVertical = true)
+        val index = isExtended(landmarks, wrist, tip = 8, base = 6, factor = 1.07f, checkVertical = true)
+        val middle = isExtended(landmarks, wrist, tip = 12, base = 10, factor = 1.07f, checkVertical = true)
+        val ring = isExtended(landmarks, wrist, tip = 16, base = 14, factor = 1.07f, checkVertical = true)
+        val pinky = isExtended(landmarks, wrist, tip = 20, base = 18, factor = 1.07f, checkVertical = true)
         return ExtensionState(thumb, index, middle, ring, pinky)
     }
 
@@ -142,7 +307,7 @@ class GestureInterpreter {
         val tipDistance = distance(point(landmarks, tip), wrist)
         val baseDistance = distance(point(landmarks, base), wrist)
         val byDistance = tipDistance > baseDistance * factor
-        val byVertical = (basePoint.second - tipPoint.second) > 0.02f
+        val byVertical = (basePoint.second - tipPoint.second) > 0.014f
         return byDistance || (checkVertical && byVertical)
     }
 
